@@ -20,9 +20,22 @@ struct City
     string name;
 };
 
+struct rankNode
+{
+    Guardian guardian;
+    rankNode* left;
+    rankNode* right;
+
+    rankNode(const Guardian& guardian) : guardian(guardian), left(nullptr), right(nullptr) {}
+};
+
+rankNode* insertRankNode(rankNode* root, const Guardian& guardian);
+void printRankTree(rankNode* root);
+void freeRankNode(rankNode* root);
+
 int getCityID(string city);
 
-vector<Guardian> leerGuerrerosDesdeArchivo(const string& fileName) 
+vector<Guardian> readGuardianFile(const string& fileName) 
 {
     int level100 = 0, level90 = 0;
     vector<Guardian> guardianList;
@@ -45,8 +58,8 @@ vector<Guardian> leerGuerrerosDesdeArchivo(const string& fileName)
         getline(ss, guardian.master, ',');
         getline(ss, guardian.city);
         guardian.cityID = getCityID(guardian.city);
-
         if (guardian.cityID == -1) { validGame = false; }
+
         guardianList.push_back(guardian);
 
         if (guardian.level == 100) { level100++; }
@@ -65,7 +78,12 @@ int main()
     int option = 0, guardianCount = 0;
 
     string guardianFile = "guardians.conf";
-    vector<Guardian> guardianList = leerGuerrerosDesdeArchivo(guardianFile);
+    vector<Guardian> guardianList = readGuardianFile(guardianFile);
+
+    rankNode* rankRoot = nullptr;
+
+    // CREACIÓN DEL ÁRBOL BINARIO (RANKING) A PARTIR DE LA LISTA DE GUARDIANES CARGADOS DESDE EL ARCHIVO
+    for (const auto& guardian : guardianList) { rankRoot = insertRankNode(rankRoot, guardian); }
 
     if (validGame == true)
     {
@@ -79,25 +97,19 @@ int main()
             case 1:
                 system("cls");
 
-                for (const auto& guardian : guardianList)
-                {
-                    if (guardian.level >= 90 && guardian.level <= 99)
-                    {
-                        guardianCount++;
-                        cout << guardianCount << endl;
-                        cout << ">> Name: " << guardian.name << endl;
-                        cout << ">> Power Level: " << guardian.level << endl;
-                        cout << ">> Master: " << guardian.master << endl;
-                        cout << ">> Origin City: " << guardian.city << endl;
-                        //cout << ">> City ID: " << guardian.cityID << endl;
-                        cout << "--------------------------" << endl;
-                    }
-                }
+                cout << ">> Guardians Ranking: \n" << endl;
+                printRankTree(rankRoot);
+                cout << "\n";
 
                 system("pause");
                 system("cls");
                 break;
             case 2:
+                system("cls");
+
+                
+
+                system("pause");
                 system("cls");
                 break;
             case 3:
@@ -113,6 +125,58 @@ int main()
         } while (option != 5);
     }
     else { cout << ">> Game invalid. Check that the files are correct." << endl; }
+
+    freeRankNode(rankRoot);
+}
+
+rankNode* insertRankNode(rankNode* root, const Guardian& guardian) 
+{
+    if (root == nullptr) 
+    {
+        return new rankNode(guardian);
+    }
+
+    if (guardian.level < root->guardian.level) 
+    {
+        root->left = insertRankNode(root->left, guardian);
+    }
+    else 
+    {
+        root->right = insertRankNode(root->right, guardian);
+    }
+
+    return root;
+}
+
+void printRankTree(rankNode* root) 
+{
+    if (root != nullptr) 
+    {
+        printRankTree(root->right);
+        if (root->guardian.level >= 90 && root->guardian.level <= 99)
+        {
+            cout << " " << root->guardian.name << " - Level: " << root->guardian.level << " - CANDIDATE" << endl;
+        }
+        else if (root->guardian.level == 100)
+        {
+            cout << " " << root->guardian.name << " - Level: " << root->guardian.level << " - GUARDIAN OF THE KINGDOM" << endl;
+        }
+        else
+        {
+            cout << " " << root->guardian.name << " - Level: " << root->guardian.level << endl;
+        }
+        printRankTree(root->left);
+    }
+}
+
+void freeRankNode(rankNode* root) 
+{
+    if (root != nullptr) 
+    {
+        freeRankNode(root->left);
+        freeRankNode(root->right);
+        delete root;
+    }
 }
 
 int getCityID(string city)
