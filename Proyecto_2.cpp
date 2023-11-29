@@ -8,6 +8,7 @@
 #include <queue>
 #include <stack>
 #include <limits>
+#include <time.h>
 
 using namespace std;
 bool validGame = true;
@@ -198,8 +199,10 @@ string getRankString(char rank);
 void showGuardiansList(const vector<Guardian*>& guardianList);
 void getGuardianInfo(const vector<Guardian*>& guardianList, int index);
 void showGuardianInfo(const Guardian& guardian);
-Guardian* searchGuardian(const vector<Guardian*>& guardianList, const string& name);
-void changeGuardianCity(Guardian* guardian, const string& newCity);
+Guardian* selectGuardian(const vector<Guardian*>& guardianList, const string& name);
+vector<Guardian*> getCityGuardians(Guardian* selectedGuardian, const vector<Guardian*>& guardianList);
+Guardian* selectRival(const vector<Guardian*>& sameCityGuardians);
+void startFight(Guardian* selectedGuardian, Guardian* selectedRival);
 
 bool readCitiesFile(const string& fileName, Graph& graph)
 {
@@ -287,11 +290,14 @@ vector<Guardian*> readGuardianFile(const string& fileName)
 
 int main()
 {
+    srand(time(NULL));
     int option = 0, guardianCount = 0, selectedIndex = 0, connectedCitiesCount = 0;
     string city1, city2, guardianToFind;
     bool isGuardianSelected = false;
 
     Guardian* selectedGuardian = nullptr;
+    Guardian* selectedRival = nullptr;
+    vector<Guardian*> guardiansFromCity;
     Graph map;
 
     vector<string> path;
@@ -328,7 +334,7 @@ int main()
                 do
                 {
                     cout << "   View Candidates List" << endl;
-                    cout << "\n1. View by Level.\n2. View by hierarchy.\n3. Go back.\n\n>> Your option: ";
+                    cout << "\n1. View by ranking.\n2. View by hierarchy.\n3. Go back.\n\n>> Your option: ";
                     cin >> option;
                     switch (option)
                     {
@@ -479,7 +485,7 @@ int main()
                         system("cls");
 
                         cout << ">> Enter the name of the guardian: "; cin >> guardianToFind;
-                        selectedGuardian = searchGuardian(guardianList, guardianToFind);
+                        selectedGuardian = selectGuardian(guardianList, guardianToFind);
 
                         if (selectedGuardian != nullptr) 
                         {
@@ -529,7 +535,16 @@ int main()
 
                         if (isGuardianSelected == true)
                         {
+                            guardiansFromCity = getCityGuardians(selectedGuardian, guardianList);
 
+                            selectedRival = selectRival(guardiansFromCity);
+
+                            if (selectedRival != nullptr) 
+                            {
+                                cout << "\n>> You will fight " << selectedRival->name << "!\n\n>> Roll the dice!\n" << endl;
+                                system("pause");
+                                startFight(selectedGuardian, selectedRival);
+                            }
                         }
                         else { cout << ">> First, you need to select a guardian." << endl; }
                         cout << "\n";
@@ -690,7 +705,7 @@ void showGuardianInfo(const Guardian& guardian)
     cout << "City: " << guardian.city << endl;
 }
 
-Guardian* searchGuardian(const vector<Guardian*>& guardianList, const string& name)
+Guardian* selectGuardian(const vector<Guardian*>& guardianList, const string& name)
 {
     for (Guardian* guardian : guardianList)
     {
@@ -707,11 +722,56 @@ Guardian* searchGuardian(const vector<Guardian*>& guardianList, const string& na
     return nullptr;
 }
 
-void changeGuardianCity(Guardian* guardian, const string& newCity) 
+vector<Guardian*> getCityGuardians(Guardian* selectedGuardian, const vector<Guardian*>& guardianList) 
 {
-    if (guardian != nullptr) 
+    vector<Guardian*> sameCityGuardians;
+
+    if (selectedGuardian == nullptr) 
     {
-        guardian->city = newCity;
+        return sameCityGuardians;
+    }
+
+    const string& selectedCity = selectedGuardian->city;
+
+    for (Guardian* guardian : guardianList) 
+    {
+        if (guardian->city == selectedCity && guardian != selectedGuardian) 
+        {
+            sameCityGuardians.push_back(guardian);
+        }
+    }
+
+    return sameCityGuardians;
+}
+
+Guardian* selectRival(const vector<Guardian*>& sameCityGuardians) 
+{
+    cout << ">> Guardians to fight:\n" << endl;
+
+    for (size_t i = 0; i < sameCityGuardians.size(); ++i) 
+    {
+        cout << i + 1 << ". " << sameCityGuardians[i]->name << " (Level "
+            << sameCityGuardians[i]->level << ")\n";
+    }
+
+    if (sameCityGuardians.empty()) 
+    {
+        cout << ">> There's no guardians to fight.\n";
+        return nullptr;
+    }
+
+    cout << "\n>> Select a rival to fight by index: ";
+    size_t selection;
+    cin >> selection;
+
+    if (selection > 0 && selection <= sameCityGuardians.size()) 
+    {
+        return sameCityGuardians[selection - 1];
+    }
+    else 
+    {
+        cout << ">> Invalid selection.\n";
+        return nullptr;
     }
 }
 
@@ -746,4 +806,37 @@ string getRankString(char rank)
     else if (rank == 'C') { rankString = "Candidate"; }
     else { rankString = "Unknown"; }
     return rankString;
+}
+
+void startFight(Guardian* selectedGuardian, Guardian* selectedRival)
+{
+    int dice = rand() % 6 + 1;
+
+    cout << "\n>> The result is " << dice << "!\n" << endl;
+
+    if (dice <= 4) // GANA EL GUARDIÁN RIVAL
+    {
+        cout << ">> " << selectedRival->name << " is the winner!\n" << endl;
+        selectedGuardian->level -= 1;
+        if(selectedRival->rank == 'C') 
+        {
+            selectedRival->level += 3;
+        }       
+        cout << ">> " << selectedRival->name << " ha subido de nivel! "<< selectedGuardian->name << " ha bajado de nivel." << endl;
+    }
+    else // GANA EL GUARDIÁN SELECCIONADO
+    {
+        cout << ">> " << selectedGuardian->name << "is the winner!\n" << endl;
+        selectedGuardian->level += 3;
+        if (selectedRival->rank == 'C')
+        {
+            selectedRival->level -= 1;
+        }
+        cout << ">> " << selectedGuardian->name << " ha subido de nivel! " << selectedRival->name << " ha bajado de nivel." << endl;
+    }
+
+    if (selectedGuardian->level < 0) { selectedGuardian->level = 0; }
+    if (selectedRival->level < 0) { selectedRival->level = 0; }
+    if (selectedGuardian->level > 100) { selectedGuardian->level = 100; }
+    if (selectedRival->level > 100) { selectedRival->level = 100; }
 }
