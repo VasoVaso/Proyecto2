@@ -5,6 +5,9 @@
 #include <unordered_map>
 #include <list>
 #include <string>
+#include <queue>
+#include <stack>
+#include <limits>
 
 using namespace std;
 bool validGame = true;
@@ -54,6 +57,106 @@ public:
         }
     }
 
+    bool areCitiesConnected(const string& city1, const string& city2) 
+    {
+        if (adjacencyList.find(city1) != adjacencyList.end()) 
+        {
+            const list<string>& neighbors = adjacencyList[city1];
+            return find(neighbors.begin(), neighbors.end(), city2) != neighbors.end();
+        }
+        return false;
+    }
+
+    vector<string> getConnectedCities(const string& city) 
+    {
+        vector<string> connectedCities;
+
+        if (adjacencyList.find(city) != adjacencyList.end()) 
+        {
+            connectedCities.insert(connectedCities.end(), adjacencyList[city].begin(), adjacencyList[city].end());
+        }
+
+        return connectedCities;
+    }
+
+    string selectConnectedCity(const vector<string>& connectedCities) 
+    {
+        cout << ">> Connected cities: \n" << endl;
+        for (size_t i = 0; i < connectedCities.size(); ++i) 
+        {
+            cout << i + 1 << ". " << connectedCities[i] << "\n";
+        }
+        cout << endl;
+
+        int choice;
+        cout << ">> Select a city by index: ";
+        cin >> choice;
+
+        if (choice >= 1 && choice <= static_cast<int>(connectedCities.size())) 
+        {
+            return connectedCities[choice - 1];
+        }
+        else 
+        {
+            cout << ">> Invalid selection." << endl;
+            return "";
+        }
+    }
+
+    vector<string> getPath(const string& start, const string& end) 
+    {
+        unordered_map<string, string> previous;
+        unordered_map<string, int> distance;
+        priority_queue<pair<int, string>, vector<pair<int, string>>, greater<pair<int, string>>> pq;
+
+        // INICIALIZAR DISTANCIAS
+        for (const auto& vertex : adjacencyList) 
+        {
+            distance[vertex.first] = numeric_limits<int>::max();
+        }
+        distance[start] = 0;
+
+        pq.push(make_pair(0, start));
+
+        while (!pq.empty()) 
+        {
+            string current = pq.top().second;
+            int currentDistance = pq.top().first;
+            pq.pop();
+
+            if (currentDistance > distance[current]) 
+            {
+                continue;
+            }
+
+            for (const auto& neighbor : adjacencyList[current]) 
+            {
+                int newDistance = distance[current] + 1;
+
+                if (newDistance < distance[neighbor]) 
+                {
+                    distance[neighbor] = newDistance;
+                    previous[neighbor] = current;
+                    pq.push(make_pair(newDistance, neighbor));
+                }
+            }
+        }
+
+        // RECONSTRUCCIÓN DEL CAMINO
+        vector<string> path;
+        string current = end;
+        while (previous.find(current) != previous.end()) 
+        {
+            path.push_back(current);
+            current = previous[current];
+        }
+        path.push_back(start);
+
+        reverse(path.begin(), path.end());
+
+        return path;
+    }
+
     void printGraph()
     {
         for (const auto& pair : adjacencyList)
@@ -95,6 +198,8 @@ string getRankString(char rank);
 void showGuardiansList(const vector<Guardian*>& guardianList);
 void getGuardianInfo(const vector<Guardian*>& guardianList, int index);
 void showGuardianInfo(const Guardian& guardian);
+Guardian* searchGuardian(const vector<Guardian*>& guardianList, const string& name);
+void changeGuardianCity(Guardian* guardian, const string& newCity);
 
 bool readCitiesFile(const string& fileName, Graph& graph)
 {
@@ -182,10 +287,15 @@ vector<Guardian*> readGuardianFile(const string& fileName)
 
 int main()
 {
-    int option = 0, guardianCount = 0, selectedIndex = 0;
-    string city1, city2;
+    int option = 0, guardianCount = 0, selectedIndex = 0, connectedCitiesCount = 0;
+    string city1, city2, guardianToFind;
+    bool isGuardianSelected = false;
 
+    Guardian* selectedGuardian = nullptr;
     Graph map;
+
+    vector<string> path;
+    vector<string> connectedCities;
 
     if (readCitiesFile("cities.conf", map)) {}
     else { validGame = false; }
@@ -244,9 +354,11 @@ int main()
                         system("cls");
                         break;
                     default:
+                        system("cls");
                         break;
                     }
                 } while (option != 3);
+                option = 0;
 
                 system("cls");
                 break;
@@ -269,12 +381,25 @@ int main()
                 do
                 {
                     cout << "   Know the Kingdom" << endl;
-                    cout << "\n1. Visit a city.\n2. View connections between cities.\n3. Create a path between cities.\n4. Go back.\n\n>> Your option: ";
+                    cout << "\n1. Ask if cities are connected.\n2. View connections between cities.\n3. Create a connection between cities.\n4. View path to travel from one city to another.\n5. Go back.\n\n>> Your option: ";
                     cin >> option;
                     switch (option)
                     {
-                    case 1: // VER UNA CIUDAD
+                    case 1: // VER CONEXIÓN ENTRE 2 CIUDADES
                         system("cls");
+
+                        cin.ignore(numeric_limits<streamsize>::max(), '\n'); // LIMPIAR BUFFER
+                        cout << ">> Enter the first city: "; getline(cin, city1);
+                        cout << ">> Enter the second city: "; getline(cin, city2);
+                        cout << "\n";
+                        if (map.areCitiesConnected(city1, city2)) 
+                        {
+                            cout << ">> Yes, there is connection between the cities." << endl;
+                        }
+                        else {
+                            cout << ">> No, there is no connection between the cities." << endl;
+                        }
+                        cout << "\n";
 
                         system("pause");
                         system("cls");
@@ -289,7 +414,7 @@ int main()
                         system("pause");
                         system("cls");
                         break;
-                    case 3:
+                    case 3: // CREAR CONEXIÓN ENTRE CIUDADES
                         system("cls");
 
                         cin.ignore(numeric_limits<streamsize>::max(), '\n'); // LIMPIAR BUFFER
@@ -302,15 +427,123 @@ int main()
                         system("pause");
                         system("cls");
                         break;
+                    case 4: // CAMNIO A RECORRER ENTRE DOS CIUDADES
+                        system("cls");
+
+                        cin.ignore(numeric_limits<streamsize>::max(), '\n'); // LIMPIAR BUFFER
+                        cout << ">> Enter the first city: "; getline(cin, city1);
+                        cout << ">> Enter the second city: "; getline(cin, city2);
+                        cout << "\n";
+                        path = map.getPath(city1, city2);
+
+                        if (!path.empty()) 
+                        {
+                            cout << ">> The path between " << city1 << " and " << city2 << " is: ";
+                            for (const auto& city : path) 
+                            {
+                                cout << city << " - ";
+                            }
+                            cout << endl;
+                        }
+                        else 
+                        {
+                            cout << ">> There's no valid path between " << city1 << " and " << city2 << "." << endl;
+                        }
+                        cout << "\n";
+
+                        system("pause");
+                        system("cls");
+                        break;
                     default:
+                        system("cls");
                         break;
                     }
 
-                } while (option != 4);
+                } while (option != 5);
+                option = 0;
 
                 system("cls");
                 break;
-            case 4:
+            case 4: // MENÚ DE PRESENCIAR BATALLA
+                system("cls");
+
+                do
+                {
+                    if( isGuardianSelected == false) { cout << "   Watch a battle | Guardian selected: None | Current City: None" << endl; }
+                    else { cout << "   Watch a battle | Guardian selected: " << selectedGuardian->name << " | Current City: " << selectedGuardian->city << endl; }
+                    cout << "\n1. Select a guardian.\n2. Travel to another city.\n3. Fight local guardians.\n4. Go back.\n\n>> Your option: ";
+                    cin >> option;
+                    switch (option)
+                    {
+                    case 1: // SELECCIONAR GUARDIAN
+                        system("cls");
+
+                        cout << ">> Enter the name of the guardian: "; cin >> guardianToFind;
+                        selectedGuardian = searchGuardian(guardianList, guardianToFind);
+
+                        if (selectedGuardian != nullptr) 
+                        {
+                            cout << "\n>> Guardian found: " << selectedGuardian->name << " (Level " << selectedGuardian->level << ")\n";
+                            isGuardianSelected = true;
+                        }
+                        else 
+                        {
+                            cout << "\n>> Guardian not found or not available (You cannot select a guardian over level 90).\n";
+                        }
+                        cout << "\n";
+
+                        system("pause");
+                        system("cls");
+                        break;
+                    case 2: // VIAJAR A OTRA CIUDAD (MODIFICAR CIUDAD DEL GUARDIÁN SELECCIONADO)
+                        system("cls");
+
+                        connectedCitiesCount = 0;
+                        if (isGuardianSelected == true)
+                        {
+                            connectedCities = map.getConnectedCities(selectedGuardian->city);
+
+                            if (!connectedCities.empty()) 
+                            {
+                                string selectedCity = map.selectConnectedCity(connectedCities);
+
+                                if (!selectedCity.empty()) 
+                                {
+                                    cout << "\n>> Traveling to " << selectedCity << "..." << endl;
+                                    selectedGuardian->city = selectedCity;
+                                }
+                            }
+                            else 
+                            {
+                                cout << "The city <" << selectedGuardian->city << "> is not connected to any other." << endl;
+                            }
+                        }
+                        else { cout << ">> First, you need to select a guardian." << endl; }
+                        cout << "\n";
+
+                        system("pause");
+                        system("cls");
+                        break;
+                    case 3: // PELEAR CONTRA GUARDIANES EN LA CIUDAD
+                        system("cls");
+
+                        if (isGuardianSelected == true)
+                        {
+
+                        }
+                        else { cout << ">> First, you need to select a guardian." << endl; }
+                        cout << "\n";
+
+                        system("pause");
+                        system("cls");
+                        break;
+                    default:
+                        system("cls");
+                        break;
+                    }
+                } while (option != 4);
+                option = 0;
+
                 system("cls");
                 break;
             default:
@@ -395,7 +628,7 @@ void printHierarchyTree(Guardian* node, int hierarchyLevel)
         return;
     }
 
-    for (int i = 0; i < hierarchyLevel; ++i) // ++i (preincremento): Incrementa el valor de i antes de que se evalúe la expresión en la que se encuentra
+    for (int i = 0; i < hierarchyLevel; ++i) // ++i (preincremento): INCREMENTA EL VALOR DE i ANTES QUE SE EVALÚE LA EXPRESIÓN 
     {
         cout << "\t"; 
     }
@@ -455,6 +688,31 @@ void showGuardianInfo(const Guardian& guardian)
     cout << "Rank: " << rankString << endl;
     cout << "Master: " << guardian.master << endl;
     cout << "City: " << guardian.city << endl;
+}
+
+Guardian* searchGuardian(const vector<Guardian*>& guardianList, const string& name)
+{
+    for (Guardian* guardian : guardianList)
+    {
+        if (guardian->name == name)
+        {
+            if (guardian->level >= 90)
+            {
+                break;
+            }
+            return guardian;
+        }
+    }
+
+    return nullptr;
+}
+
+void changeGuardianCity(Guardian* guardian, const string& newCity) 
+{
+    if (guardian != nullptr) 
+    {
+        guardian->city = newCity;
+    }
 }
 
 int getCityID(string city)
