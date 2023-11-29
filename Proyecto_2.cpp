@@ -8,6 +8,7 @@
 
 using namespace std;
 bool validGame = true;
+string masterGuardian;
 
 struct Guardian
 {
@@ -90,6 +91,10 @@ void freeHierarchyTree(Guardian* node);
 
 //
 int getCityID(string city);
+string getRankString(char rank);
+void showGuardiansList(const vector<Guardian*>& guardianList);
+void getGuardianInfo(const vector<Guardian*>& guardianList, int index);
+void showGuardianInfo(const Guardian& guardian);
 
 bool readCitiesFile(const string& fileName, Graph& graph)
 {
@@ -130,88 +135,54 @@ bool readCitiesFile(const string& fileName, Graph& graph)
 
 vector<Guardian*> readGuardianFile(const string& fileName)
 {
+    int level100 = 0, level90 = 0;
     vector<Guardian*> guardianList;
     ifstream file(fileName);
 
     if (!file.is_open())
     {
-        cerr << "Error al abrir el archivo." << endl;
+        cerr << ">> Error opening guardians file." << endl;
         return guardianList;
     }
 
-    string linea;
-    while (getline(file, linea))
+    string line;
+    while (getline(file, line))
     {
-        istringstream ss(linea);
-        string nombre, maestro, ciudad;
-        int level;
+        istringstream ss(line);
+        string name, master, city;
+        int level, cityID;
         char rank = 'X';
 
-        getline(ss, nombre, ',');
+        getline(ss, name, ',');
         ss >> level;
         ss.ignore(); // Ignorar la coma después del nivel
-        getline(ss, maestro, ',');
-        getline(ss, ciudad, ',');
+        getline(ss, master, ',');
+        getline(ss, city, ',');
 
-        if (level == 100) { rank = 'M'; }
+        cityID = getCityID(city);
+        if (cityID == -1) { validGame = false; }
+
+        if (level == 100) { rank = 'M'; masterGuardian = name; }
         else if (level >= 90 && level <= 99) { rank = 'G'; }
         else { rank = 'C'; }
 
-        Guardian* nuevoGuardian = new Guardian(nombre, level, rank, maestro, ciudad);
+        Guardian* nuevoGuardian = new Guardian(name, level, rank, master, city);
         guardianList.push_back(nuevoGuardian);
-    }
 
-    file.close();
-    return guardianList;
-}
-
-/*
-vector<Guardian> readGuardianFile(const string& fileName)
-{
-    int level100 = 0, level90 = 0;
-    vector<Guardian> guardianList;
-    ifstream file(fileName);
-
-    if (!file.is_open())
-    {
-        cerr << ">> Error opening guardians file." << fileName << "\n" << endl;
-        return guardianList;
-    }
-
-    string linea;
-    while (getline(file, linea))
-    {
-        istringstream ss(linea);
-        Guardian guardian;
-        getline(ss, guardian.name, ',');
-        ss >> guardian.level;
-        ss.ignore();
-        getline(ss, guardian.master, ',');
-        getline(ss, guardian.city);
-
-        guardian.cityID = getCityID(guardian.city);
-        if (guardian.cityID == -1) { validGame = false; }
-
-        if (guardian.level == 100) { guardian.rank = 'M'; }
-        else if (guardian.level >= 90 && guardian.level <= 99) { guardian.rank = 'G'; }
-        else { guardian.rank = 'C'; }
-
-        guardianList.push_back(guardian);
-
-        if (guardian.level == 100) { level100++; }
-        if (guardian.level >= 90 && guardian.level <= 99) { level90++; }
-        if (guardian.level < 0 || guardian.level > 100) { validGame = false; }
+        if (level == 100) { level100++; }
+        if (level >= 90 && level <= 99) { level90++; }
+        if (level < 0 || level > 100) { validGame = false; }
     }
 
     if (level100 > 1 || level90 > 3) { validGame = false; }
 
     file.close();
     return guardianList;
-}*/
+}
 
 int main()
 {
-    int option = 0, guardianCount = 0;
+    int option = 0, guardianCount = 0, selectedIndex = 0;
     string city1, city2;
 
     Graph map;
@@ -230,7 +201,7 @@ int main()
     }
 
     // CREACIÓN DEL ÁRBOL GENERAL (JERARQUÍA) A PARTIR DEL NOMBRE DEL GUARDIÁN MAESTRO OBTENIDO DESDE EL ARCHIVO
-    Guardian* top = createHierarchyTree(guardianList, "Freya");
+    Guardian* top = createHierarchyTree(guardianList, masterGuardian);
 
     if (validGame == true)
     {
@@ -241,22 +212,52 @@ int main()
             cin >> option;
             switch (option)
             {
-            case 1: // VER LISTA DE CANDIDATOS 
+            case 1: // MENÚ VER LISTA DE CANDIDATOS 
                 system("cls");
 
-                cout << ">> Guardians Ranking:\n" << endl;
-                cout << " (M = GRAND MASTER, G = GUARDIAN OF THE KINGDOM, C = CANDIDATE)\n" << endl;
-                printRankTree(rankRoot);
-                cout << "\n";
+                do
+                {
+                    cout << "   View Candidates List" << endl;
+                    cout << "\n1. View by Level.\n2. View by hierarchy.\n3. Go back.\n\n>> Your option: ";
+                    cin >> option;
+                    switch (option)
+                    {
+                    case 1: // VER RANKING
+                        system("cls");
 
-                system("pause");
+                        cout << ">> Guardians Ranking:\n" << endl;
+                        cout << " (M = GRAND MASTER, G = GUARDIAN OF THE KINGDOM, C = CANDIDATE)\n" << endl;
+                        printRankTree(rankRoot);
+                        cout << "\n";
+
+                        system("pause");
+                        system("cls");
+                        break;
+                    case 2: // VER JERARQUÍA
+                        system("cls");
+
+                        cout << ">> Guardians Hierarchy:\n" << endl;
+                        printHierarchyTree(top);
+                        cout << "\n";
+
+                        system("pause");
+                        system("cls");
+                        break;
+                    default:
+                        break;
+                    }
+                } while (option != 3);
+
                 system("cls");
                 break;
             case 2: // VER INFORMACIÓN DE GUARDIÁN SELECCIONADO
                 system("cls");
 
-                cout << ">> Guardians Hierarchy:\n" << endl;
-                printHierarchyTree(top);
+                showGuardiansList(guardianList);
+                cout << ">> Select the index of the guardian to see the details: ";
+                cin >> selectedIndex;
+                cout << "\n";
+                getGuardianInfo(guardianList, selectedIndex);
                 cout << "\n";
 
                 system("pause");
@@ -422,6 +423,40 @@ void freeHierarchyTree(Guardian* node)
     delete node;
 }
 
+void showGuardiansList(const vector<Guardian*>& guardianList) 
+{
+    cout << ">> List of Guardians:\n" << endl;
+    for (size_t i = 0; i < guardianList.size(); ++i) 
+    {
+        cout << i << ": " << guardianList[i]->name << endl;
+    }
+    cout << "--------------------------" << endl;
+}
+
+void getGuardianInfo(const vector<Guardian*>& guardianList, int index) 
+{
+    if (index >= 0 && index < guardianList.size()) 
+    {
+        const Guardian* guardianSelected = guardianList[index];
+        showGuardianInfo(*guardianSelected);
+    }
+    else 
+    {
+        cout << ">> Invalid index." << endl;
+    }
+}
+
+void showGuardianInfo(const Guardian& guardian)
+{
+    cout << ">> Guardian Details:" << endl;
+    cout << "Name: " << guardian.name << endl;
+    cout << "Level: " << guardian.level << endl;
+    string rankString = getRankString(guardian.rank);
+    cout << "Rank: " << rankString << endl;
+    cout << "Master: " << guardian.master << endl;
+    cout << "City: " << guardian.city << endl;
+}
+
 int getCityID(string city)
 {
     int id = 0;
@@ -443,4 +478,14 @@ int getCityID(string city)
     else { id = -1; }
 
     return id;
+}
+
+string getRankString(char rank)
+{
+    string rankString;
+    if (rank == 'M') { rankString = "Grand Master"; }
+    else if (rank == 'G') { rankString = "Guardian of the Kingdom"; }
+    else if (rank == 'C') { rankString = "Candidate"; }
+    else { rankString = "Unknown"; }
+    return rankString;
 }
