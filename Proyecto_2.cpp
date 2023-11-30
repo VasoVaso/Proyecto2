@@ -11,9 +11,10 @@
 #include <time.h>
 
 using namespace std;
-bool validGame = true;
-string masterGuardian;
+bool validGame = true; //  VALIDAR QUE LOS ARCHIVOS .CONF ESTÉN BIEN IMPLEMENTADOS
+string masterGuardian; // GUARDAR EL NOMBRE DEL GUARDIÁN CON NIVEL 100
 
+// ESTRUCTURA DE GUARDIÁN 
 struct Guardian
 {
     string name;
@@ -22,35 +23,41 @@ struct Guardian
     string city;
     int cityID = 0;
     string master;
-    vector<Guardian*> apprentices;
+    vector<Guardian*> apprentices; 
+    Guardian* left;
+    Guardian* right;
 
-    Guardian(const string& name, int level, char rank, const string& master, const string& city) : name(name), level(level), rank(rank), master(master), city(city) {}
+    Guardian(const string& name, int level, char rank, const string& master, const string& city) : name(name), level(level), rank(rank), master(master), city(city), left(nullptr), right(nullptr) {}
 };
 
+// ESTRUCTURA DE LA CIUDAD
 struct City
 {
     string name;
     int id = 0;
 };
 
+// GRAFO NO DIRIGIDO PARA REPRESENTAR EL MAPA DE LAS CIUDADES
 class Graph
 {
 public:
-    unordered_map<string, list<string>> adjacencyList;
+    unordered_map<string, list<string>> adjacencyList; 
 
+    // FUNCIÓN DEL GRAFO PARA AÑADIR ARISTAS (CONEXIONES ENTRE CIUDADES)
     void addEdge(const string& vertex1, const string& vertex2)
     {
         adjacencyList[vertex1].push_back(vertex2);
         adjacencyList[vertex2].push_back(vertex1);
     }
 
-    void addConnection(const string& vertex1, const string& vertex2)
+    // FUNCIÓN DEL GRAFO PARA CREAR UNA CONEXIÓN ENTRE 2 CIUDADES
+    void addConnection(const string& city1, const string& city2)
     {
-        if (adjacencyList.find(vertex1) != adjacencyList.end() && find(adjacencyList[vertex1].begin(), adjacencyList[vertex1].end(), vertex2) == adjacencyList[vertex1].end())
+        if (adjacencyList.find(city1) != adjacencyList.end() && find(adjacencyList[city1].begin(), adjacencyList[city1].end(), city2) == adjacencyList[city1].end())
         {
-            adjacencyList[vertex1].push_back(vertex2);
-            adjacencyList[vertex2].push_back(vertex1);
-            cout << ">> Added connection: " << vertex1 << " <-> " << vertex2 << endl;
+            adjacencyList[city1].push_back(city2);
+            adjacencyList[city2].push_back(city1);
+            cout << ">> Added connection: " << city1 << " <-> " << city2 << endl;
         }
         else
         {
@@ -58,9 +65,10 @@ public:
         }
     }
 
-    bool areCitiesConnected(const string& city1, const string& city2) 
+    // FUNCIÓN DEL GRAFO DONDE SE REVISA SI 2 CIUDADES SON VECINAS
+    bool areCitiesConnected(const string& city1, const string& city2)
     {
-        if (adjacencyList.find(city1) != adjacencyList.end()) 
+        if (adjacencyList.find(city1) != adjacencyList.end())
         {
             const list<string>& neighbors = adjacencyList[city1];
             return find(neighbors.begin(), neighbors.end(), city2) != neighbors.end();
@@ -68,11 +76,12 @@ public:
         return false;
     }
 
-    vector<string> getConnectedCities(const string& city) 
+    // FUNCIÓN DEL GRAFO DONDE SE OBTIENE UNA LISTA QUE MUESTRA LAS CIUDADES VECINAS PARA UNA CIUDAD
+    vector<string> getConnectedCities(const string& city)
     {
         vector<string> connectedCities;
 
-        if (adjacencyList.find(city) != adjacencyList.end()) 
+        if (adjacencyList.find(city) != adjacencyList.end())
         {
             connectedCities.insert(connectedCities.end(), adjacencyList[city].begin(), adjacencyList[city].end());
         }
@@ -80,10 +89,11 @@ public:
         return connectedCities;
     }
 
-    string selectConnectedCity(const vector<string>& connectedCities) 
+    // FUNCIÓN DEL GRAFO DONDE SE OBTIENEN LAS CIUDADES VECINAS A UNA CIUDAD INGRESADA POR EL USUARIO, LUEGO SE SELECCIONA UNA DE ESAS CIUDADES VECINAS
+    string selectConnectedCity(const vector<string>& connectedCities)
     {
         cout << ">> Connected cities: \n" << endl;
-        for (size_t i = 0; i < connectedCities.size(); ++i) 
+        for (size_t i = 0; i < connectedCities.size(); ++i)
         {
             cout << i + 1 << ". " << connectedCities[i] << "\n";
         }
@@ -93,25 +103,26 @@ public:
         cout << ">> Select a city by index: ";
         cin >> choice;
 
-        if (choice >= 1 && choice <= static_cast<int>(connectedCities.size())) 
+        if (choice >= 1 && choice <= static_cast<int>(connectedCities.size()))
         {
             return connectedCities[choice - 1];
         }
-        else 
+        else
         {
             cout << ">> Invalid selection." << endl;
             return "";
         }
     }
 
-    vector<string> getPath(const string& start, const string& end) 
+    // FUNCIÓN DEL GRAFO DONDE SE OBTIENE EL CAMINO PARA LLEGAR DE UNA CIUDAD A OTRA, LA SALIDA SON LAS CIUDADES POR LAS QUE SE DEBE PASAR PARA LLEGAR AL DESTINO
+    vector<string> getPath(const string& start, const string& end)
     {
         unordered_map<string, string> previous;
         unordered_map<string, int> distance;
         priority_queue<pair<int, string>, vector<pair<int, string>>, greater<pair<int, string>>> pq;
 
         // INICIALIZAR DISTANCIAS
-        for (const auto& vertex : adjacencyList) 
+        for (const auto& vertex : adjacencyList)
         {
             distance[vertex.first] = numeric_limits<int>::max();
         }
@@ -119,22 +130,22 @@ public:
 
         pq.push(make_pair(0, start));
 
-        while (!pq.empty()) 
+        while (!pq.empty())
         {
             string current = pq.top().second;
             int currentDistance = pq.top().first;
             pq.pop();
 
-            if (currentDistance > distance[current]) 
+            if (currentDistance > distance[current])
             {
                 continue;
             }
 
-            for (const auto& neighbor : adjacencyList[current]) 
+            for (const auto& neighbor : adjacencyList[current])
             {
                 int newDistance = distance[current] + 1;
 
-                if (newDistance < distance[neighbor]) 
+                if (newDistance < distance[neighbor])
                 {
                     distance[neighbor] = newDistance;
                     previous[neighbor] = current;
@@ -146,7 +157,7 @@ public:
         // RECONSTRUCCIÓN DEL CAMINO
         vector<string> path;
         string current = end;
-        while (previous.find(current) != previous.end()) 
+        while (previous.find(current) != previous.end())
         {
             path.push_back(current);
             current = previous[current];
@@ -158,6 +169,7 @@ public:
         return path;
     }
 
+    // FUNCIÓN DEL GRAFO PARA IMPRIMIR LA LISTA DE ADYACENCIA DE CIUDADES Y VER QUÉ CIUDADES ESTÁN CONECTADAS CON CADA UNA
     void printGraph()
     {
         for (const auto& pair : adjacencyList)
@@ -172,28 +184,20 @@ public:
     }
 };
 
-struct rankNode
-{
-    Guardian guardian;
-    rankNode* left;
-    rankNode* right;
-
-    rankNode(const Guardian& guardian) : guardian(guardian), left(nullptr), right(nullptr) {}
-};
-
-//----- PROTOTIPOS -----//
+//--------------- PROTOTIPOS ---------------// (descripciones más abajo)
 
 // ÁRBOL BINARIO (RANKING)
-rankNode* insertRankNode(rankNode* root, const Guardian* guardian);
-void printRankTree(rankNode* root);
-void freeRankNode(rankNode* root);
+Guardian* insertRankNode(Guardian* root, Guardian* newGuardian);
+Guardian* createRankTree(const vector<Guardian*>& guardianList);
+void printRankTree(Guardian* root);
+void freeRankTree(Guardian* root);
 
 // ÁRBOL GENERAL (JERARQUÍA)
 Guardian* createHierarchyTree(const vector<Guardian*>& guardianList, const string& masterGuardian);
 void printHierarchyTree(Guardian* node, int hierarchyLevel = 0);
 void freeHierarchyTree(Guardian* node);
 
-//
+// OTRAS FUNCIONES
 int getCityID(string city);
 string getRankString(char rank);
 void showGuardiansList(const vector<Guardian*>& guardianList);
@@ -202,8 +206,12 @@ void showGuardianInfo(const Guardian& guardian);
 Guardian* selectGuardian(const vector<Guardian*>& guardianList, const string& name);
 vector<Guardian*> getCityGuardians(Guardian* selectedGuardian, const vector<Guardian*>& guardianList);
 Guardian* selectRival(const vector<Guardian*>& sameCityGuardians);
-void startFight(Guardian* selectedGuardian, Guardian* selectedRival);
+void startFight(Guardian* selectedGuardian, Guardian* selectedRival, const vector<Guardian*>& guardianList);
+bool isMaster(Guardian* guardian, const vector<Guardian*>& guardianList);
+//--------------------------------------------------------------//
 
+
+// FUNCIÓN DE LECTURA DEL ARCHIVO "cities.conf"
 bool readCitiesFile(const string& fileName, Graph& graph)
 {
     int cityExists = 0;
@@ -240,7 +248,7 @@ bool readCitiesFile(const string& fileName, Graph& graph)
     return true;
 }
 
-
+// FUNCIÓN DE LECTURA DEL ARCHIVO "guardians.conf"
 vector<Guardian*> readGuardianFile(const string& fileName)
 {
     int level100 = 0, level90 = 0;
@@ -288,9 +296,10 @@ vector<Guardian*> readGuardianFile(const string& fileName)
     return guardianList;
 }
 
+//---------------- FUNCIÓN MAIN ----------------//
 int main()
 {
-    srand(time(NULL));
+    srand((unsigned int)time(NULL));
     int option = 0, guardianCount = 0, selectedIndex = 0, connectedCitiesCount = 0;
     string city1, city2, guardianToFind;
     bool isGuardianSelected = false;
@@ -308,13 +317,8 @@ int main()
 
     vector<Guardian*> guardianList = readGuardianFile("guardians.conf");
 
-    rankNode* rankRoot = nullptr;
-
     // CREACIÓN DEL ÁRBOL BINARIO (RANKING) A PARTIR DE LA LISTA DE GUARDIANES CARGADOS DESDE EL ARCHIVO
-    for (const auto& guardian : guardianList)
-    {
-        rankRoot = insertRankNode(rankRoot, guardian);
-    }
+    Guardian* rankRoot = createRankTree(guardianList);
 
     // CREACIÓN DEL ÁRBOL GENERAL (JERARQUÍA) A PARTIR DEL NOMBRE DEL GUARDIÁN MAESTRO OBTENIDO DESDE EL ARCHIVO
     Guardian* top = createHierarchyTree(guardianList, masterGuardian);
@@ -398,7 +402,7 @@ int main()
                         cout << ">> Enter the first city: "; getline(cin, city1);
                         cout << ">> Enter the second city: "; getline(cin, city2);
                         cout << "\n";
-                        if (map.areCitiesConnected(city1, city2)) 
+                        if (map.areCitiesConnected(city1, city2))
                         {
                             cout << ">> Yes, there is connection between the cities." << endl;
                         }
@@ -410,7 +414,7 @@ int main()
                         system("pause");
                         system("cls");
                         break;
-                    case 2: // VER CONEXIÓN ENTRE CIUDADES
+                    case 2: // VER CONEXIONES ENTRE TODAS LAS CIUDADES
                         system("cls");
 
                         cout << ">> Cities connections\n" << endl;
@@ -433,7 +437,7 @@ int main()
                         system("pause");
                         system("cls");
                         break;
-                    case 4: // CAMNIO A RECORRER ENTRE DOS CIUDADES
+                    case 4: // CAMINO A RECORRER ENTRE DOS CIUDADES
                         system("cls");
 
                         cin.ignore(numeric_limits<streamsize>::max(), '\n'); // LIMPIAR BUFFER
@@ -442,16 +446,16 @@ int main()
                         cout << "\n";
                         path = map.getPath(city1, city2);
 
-                        if (!path.empty()) 
+                        if (!path.empty())
                         {
                             cout << ">> The path between " << city1 << " and " << city2 << " is: ";
-                            for (const auto& city : path) 
+                            for (const auto& city : path)
                             {
                                 cout << city << " - ";
                             }
                             cout << endl;
                         }
-                        else 
+                        else
                         {
                             cout << ">> There's no valid path between " << city1 << " and " << city2 << "." << endl;
                         }
@@ -475,7 +479,7 @@ int main()
 
                 do
                 {
-                    if( isGuardianSelected == false) { cout << "   Watch a battle | Guardian selected: None | Current City: None" << endl; }
+                    if (isGuardianSelected == false) { cout << "   Watch a battle | Guardian selected: None | Current City: None" << endl; }
                     else { cout << "   Watch a battle | Guardian selected: " << selectedGuardian->name << " | Current City: " << selectedGuardian->city << endl; }
                     cout << "\n1. Select a guardian.\n2. Travel to another city.\n3. Fight local guardians.\n4. Go back.\n\n>> Your option: ";
                     cin >> option;
@@ -487,12 +491,12 @@ int main()
                         cout << ">> Enter the name of the guardian: "; cin >> guardianToFind;
                         selectedGuardian = selectGuardian(guardianList, guardianToFind);
 
-                        if (selectedGuardian != nullptr) 
+                        if (selectedGuardian != nullptr)
                         {
                             cout << "\n>> Guardian found: " << selectedGuardian->name << " (Level " << selectedGuardian->level << ")\n";
                             isGuardianSelected = true;
                         }
-                        else 
+                        else
                         {
                             cout << "\n>> Guardian not found or not available (You cannot select a guardian over level 90).\n";
                         }
@@ -509,17 +513,17 @@ int main()
                         {
                             connectedCities = map.getConnectedCities(selectedGuardian->city);
 
-                            if (!connectedCities.empty()) 
+                            if (!connectedCities.empty())
                             {
                                 string selectedCity = map.selectConnectedCity(connectedCities);
 
-                                if (!selectedCity.empty()) 
+                                if (!selectedCity.empty())
                                 {
                                     cout << "\n>> Traveling to " << selectedCity << "..." << endl;
                                     selectedGuardian->city = selectedCity;
                                 }
                             }
-                            else 
+                            else
                             {
                                 cout << "The city <" << selectedGuardian->city << "> is not connected to any other." << endl;
                             }
@@ -539,11 +543,11 @@ int main()
 
                             selectedRival = selectRival(guardiansFromCity);
 
-                            if (selectedRival != nullptr) 
+                            if (selectedRival != nullptr)
                             {
                                 cout << "\n>> You will fight " << selectedRival->name << "!\n\n>> Roll the dice!\n" << endl;
                                 system("pause");
-                                startFight(selectedGuardian, selectedRival);
+                                startFight(selectedGuardian, selectedRival, guardianList);
                             }
                         }
                         else { cout << ">> First, you need to select a guardian." << endl; }
@@ -569,50 +573,70 @@ int main()
     }
     else { cout << ">> Game invalid. Check that the files are correct." << endl; }
 
-    freeRankNode(rankRoot);
+    freeRankTree(rankRoot);
     freeHierarchyTree(top);
+
+    return 0;
 }
 
-rankNode* insertRankNode(rankNode* root, const Guardian* guardian)
+// FUNCIÓN PARA INSERTAR NODOS EN EL ÁRBOL BINARIO (RANKING)
+Guardian* insertRankNode(Guardian* root, Guardian* newGuardian)
 {
-    if (root == nullptr)
+    if (root == nullptr) 
     {
-        return new rankNode(*guardian);
+        return newGuardian;
     }
 
-    if (guardian->level < root->guardian.level)
+    if (newGuardian->level <= root->level) 
     {
-        root->left = insertRankNode(root->left, guardian);
+        root->left = insertRankNode(root->left, newGuardian);
     }
-    else
+
+    else 
     {
-        root->right = insertRankNode(root->right, guardian);
+        root->right = insertRankNode(root->right, newGuardian);
     }
 
     return root;
 }
 
-void printRankTree(rankNode* root)
+// FUNCIÓN PARA CREAR EL ÁRBOL BINARIO (RANKING)
+Guardian* createRankTree(const vector<Guardian*>& guardianList)
 {
-    if (root != nullptr)
+    Guardian* root = nullptr;
+
+    for (Guardian* guardian : guardianList) 
+    {
+        root = insertRankNode(root, guardian);
+    }
+
+    return root;
+}
+
+// FUNCIÓN PARA IMPRIMIR EL ÁRBOL BINARIO (RANKING)
+void printRankTree(Guardian* root)
+{
+    if (root != nullptr) 
     {
         // IN-ORDER
         printRankTree(root->right);
-        cout << " " << root->guardian.rank << " " << root->guardian.name << " - Level: " << root->guardian.level << endl;
+        cout << " " << root->rank << " " << root->name << ": level " << root->level << "\n";
         printRankTree(root->left);
     }
 }
 
-void freeRankNode(rankNode* root)
+// FUNCIÓN PARA LIBERAR LA MEMORIA DEL ÁRBOL BINARIO (RANKING)
+void freeRankTree(Guardian* root)
 {
-    if (root != nullptr)
+    if (root != nullptr) 
     {
-        freeRankNode(root->left);
-        freeRankNode(root->right);
+        freeRankTree(root->left);
+        freeRankTree(root->right);
         delete root;
     }
 }
 
+// FUNCIÓN PARA CREAR EL ÁRBOL GENERAL (JERARQUÍA)
 Guardian* createHierarchyTree(const vector<Guardian*>& guardianList, const string& masterGuardian)
 {
     Guardian* top = nullptr;
@@ -636,6 +660,7 @@ Guardian* createHierarchyTree(const vector<Guardian*>& guardianList, const strin
     return top;
 }
 
+// FUNCIÓN PARA IMPRIMIR EL ÁRBOL GENERAL (JERARQUÍA)
 void printHierarchyTree(Guardian* node, int hierarchyLevel)
 {
     if (node == nullptr)
@@ -645,7 +670,7 @@ void printHierarchyTree(Guardian* node, int hierarchyLevel)
 
     for (int i = 0; i < hierarchyLevel; ++i) // ++i (preincremento): INCREMENTA EL VALOR DE i ANTES QUE SE EVALÚE LA EXPRESIÓN 
     {
-        cout << "\t"; 
+        cout << "\t";
     }
 
     cout << node->name << ", " << "Level " << node->level << " (" << node->city << ")\n";
@@ -656,6 +681,7 @@ void printHierarchyTree(Guardian* node, int hierarchyLevel)
     }
 }
 
+// FUNCIÓN PARA LIBERAR MEMORIA DEL ÁRBOL GENERAL (JERARQUÍA)
 void freeHierarchyTree(Guardian* node)
 {
     if (node == nullptr)
@@ -671,29 +697,32 @@ void freeHierarchyTree(Guardian* node)
     delete node;
 }
 
-void showGuardiansList(const vector<Guardian*>& guardianList) 
+// FUNCIÓN PARA MOSTRAR LA LISTA DE GUARDIANES
+void showGuardiansList(const vector<Guardian*>& guardianList)
 {
     cout << ">> List of Guardians:\n" << endl;
-    for (size_t i = 0; i < guardianList.size(); ++i) 
+    for (size_t i = 0; i < guardianList.size(); ++i)
     {
         cout << i << ": " << guardianList[i]->name << endl;
     }
     cout << "--------------------------" << endl;
 }
 
-void getGuardianInfo(const vector<Guardian*>& guardianList, int index) 
+// FUNCIÓN PARA OBTENER LA INFORMACIÓN DE UN GUARDIÁN DE LA LISTA SEGÚN EL ÍNDICE RECIBIDO
+void getGuardianInfo(const vector<Guardian*>& guardianList, int index)
 {
-    if (index >= 0 && index < guardianList.size()) 
+    if (index >= 0 && index < guardianList.size())
     {
         const Guardian* guardianSelected = guardianList[index];
         showGuardianInfo(*guardianSelected);
     }
-    else 
+    else
     {
         cout << ">> Invalid index." << endl;
     }
 }
 
+// FUNCIÓN QUE MUESTRA TODOS LOS DETALLES DEL GUARDIÁN
 void showGuardianInfo(const Guardian& guardian)
 {
     cout << ">> Guardian Details:" << endl;
@@ -705,6 +734,7 @@ void showGuardianInfo(const Guardian& guardian)
     cout << "City: " << guardian.city << endl;
 }
 
+// FUNCIÓN DONDE SE SELECCIONA UN GUARDÍAN DE LA LISTA A PARTIR DEL NOMBRE RECIBIDO
 Guardian* selectGuardian(const vector<Guardian*>& guardianList, const string& name)
 {
     for (Guardian* guardian : guardianList)
@@ -722,20 +752,34 @@ Guardian* selectGuardian(const vector<Guardian*>& guardianList, const string& na
     return nullptr;
 }
 
-vector<Guardian*> getCityGuardians(Guardian* selectedGuardian, const vector<Guardian*>& guardianList) 
+// FUNCIÓN DONDE SE PREGUNTA SI UN GUARDIÁN ES MAESTRO DE OTRO GUARDIÁN
+bool isMaster(Guardian* guardian, const vector<Guardian*>& guardianList) 
+{
+    for (Guardian* otroGuardian : guardianList) 
+    {
+        if (otroGuardian->master == guardian->name) 
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+// FUNCIÓN DONDE SE OBTIENEN LOS GUARDIANES PERTENECIENTES A LA CIUDAD DEL GUARDIÁN SELECCIONADO POR EL USUARIO
+vector<Guardian*> getCityGuardians(Guardian* selectedGuardian, const vector<Guardian*>& guardianList)
 {
     vector<Guardian*> sameCityGuardians;
 
-    if (selectedGuardian == nullptr) 
+    if (selectedGuardian == nullptr)
     {
         return sameCityGuardians;
     }
 
     const string& selectedCity = selectedGuardian->city;
 
-    for (Guardian* guardian : guardianList) 
+    for (Guardian* guardian : guardianList)
     {
-        if (guardian->city == selectedCity && guardian != selectedGuardian) 
+        if (guardian->city == selectedCity && guardian != selectedGuardian)
         {
             sameCityGuardians.push_back(guardian);
         }
@@ -744,17 +788,18 @@ vector<Guardian*> getCityGuardians(Guardian* selectedGuardian, const vector<Guar
     return sameCityGuardians;
 }
 
-Guardian* selectRival(const vector<Guardian*>& sameCityGuardians) 
+// FUNCIÓN DONDE SE SELECCIONA AL GUARDIÁN RIVAL PARA PELEAR, ESTE RIVAL SIEMPRE ESTARÁ EN LA CIUDAD EN LA QUE SE ENCUENTRE NUESTRO GUARDIÁN SELECCIONADO
+Guardian* selectRival(const vector<Guardian*>& sameCityGuardians)
 {
     cout << ">> Guardians to fight:\n" << endl;
 
-    for (size_t i = 0; i < sameCityGuardians.size(); ++i) 
+    for (size_t i = 0; i < sameCityGuardians.size(); ++i)
     {
         cout << i + 1 << ". " << sameCityGuardians[i]->name << " (Level "
             << sameCityGuardians[i]->level << ")\n";
     }
 
-    if (sameCityGuardians.empty()) 
+    if (sameCityGuardians.empty())
     {
         cout << ">> There's no guardians to fight.\n";
         return nullptr;
@@ -764,17 +809,18 @@ Guardian* selectRival(const vector<Guardian*>& sameCityGuardians)
     size_t selection;
     cin >> selection;
 
-    if (selection > 0 && selection <= sameCityGuardians.size()) 
+    if (selection > 0 && selection <= sameCityGuardians.size())
     {
         return sameCityGuardians[selection - 1];
     }
-    else 
+    else
     {
         cout << ">> Invalid selection.\n";
         return nullptr;
     }
 }
 
+// FUNCIÓN PARA OBTENER EL ID DE UNA CIUDAD, SE UTILIZA PARA CORROBORAR QUE UNA CIUDAD RECIBIDA DESDE EL ARCHIVO ES VÁLIDA
 int getCityID(string city)
 {
     int id = 0;
@@ -798,6 +844,7 @@ int getCityID(string city)
     return id;
 }
 
+// FUNCIÓN PARA TRANSFORMAR EL ATRIBUTO RANK (CHAR) A STRING
 string getRankString(char rank)
 {
     string rankString;
@@ -808,7 +855,8 @@ string getRankString(char rank)
     return rankString;
 }
 
-void startFight(Guardian* selectedGuardian, Guardian* selectedRival)
+// FUNCIÓN PARA COMENZAR LA PELEA ENTRE LOS 2 GUARDIANES SELECCIONADOS
+void startFight(Guardian* selectedGuardian, Guardian* selectedRival, const vector<Guardian*>& guardianList)
 {
     int dice = rand() % 6 + 1;
 
@@ -818,23 +866,38 @@ void startFight(Guardian* selectedGuardian, Guardian* selectedRival)
     {
         cout << ">> " << selectedRival->name << " is the winner!\n" << endl;
         selectedGuardian->level -= 1;
-        if(selectedRival->rank == 'C') 
+        if (selectedRival->rank == 'C')
         {
-            selectedRival->level += 3;
-        }       
-        cout << ">> " << selectedRival->name << " ha subido de nivel! "<< selectedGuardian->name << " ha bajado de nivel." << endl;
+            if (isMaster(selectedGuardian, guardianList))
+            {
+                selectedRival->level += 5;
+            }
+            else
+            {
+                selectedRival->level += 3;
+            }          
+        }
+        cout << ">> " << selectedRival->name << " has leveled up! " << selectedGuardian->name << " has leveled down." << endl;
     }
     else // GANA EL GUARDIÁN SELECCIONADO
     {
-        cout << ">> " << selectedGuardian->name << "is the winner!\n" << endl;
-        selectedGuardian->level += 3;
+        cout << ">> " << selectedGuardian->name << " is the winner!\n" << endl;
+        if (isMaster(selectedRival, guardianList))
+        {
+            selectedRival->level += 5;
+        }
+        else
+        {
+            selectedGuardian->level += 3;
+        }
         if (selectedRival->rank == 'C')
         {
             selectedRival->level -= 1;
         }
-        cout << ">> " << selectedGuardian->name << " ha subido de nivel! " << selectedRival->name << " ha bajado de nivel." << endl;
+        cout << ">> " << selectedGuardian->name << " has leveled up! " << selectedRival->name << " has leveled down." << endl;
     }
 
+    // PONER LÍMITES DE SUBIDA O BAJADA DE NIVEL
     if (selectedGuardian->level < 0) { selectedGuardian->level = 0; }
     if (selectedRival->level < 0) { selectedRival->level = 0; }
     if (selectedGuardian->level > 100) { selectedGuardian->level = 100; }
