@@ -30,13 +30,6 @@ struct Guardian
     Guardian(const string& name, int level, char rank, const string& master, const string& city) : name(name), level(level), rank(rank), master(master), city(city), left(nullptr), right(nullptr) {}
 };
 
-// ESTRUCTURA DE LA CIUDAD
-struct City
-{
-    string name;
-    int id = 0;
-};
-
 // GRAFO NO DIRIGIDO PARA REPRESENTAR EL MAPA DE LAS CIUDADES
 class Graph
 {
@@ -230,7 +223,7 @@ bool readCitiesFile(const string& fileName, Graph& graph)
         getline(iss, vertex1, ',');
         getline(iss, vertex2);
 
-        // Eliminar espacios en blanco al principio y al final de las cadenas
+        // ELIMINAR ESPACIOS EN BLANCO AL PRINCIPIO Y AL FINAL DE LA CADENA
         vertex1.erase(0, vertex1.find_first_not_of(" \t\n\r\f\v"));
         vertex1.erase(vertex1.find_last_not_of(" \t\n\r\f\v") + 1);
         vertex2.erase(0, vertex2.find_first_not_of(" \t\n\r\f\v"));
@@ -249,7 +242,7 @@ bool readCitiesFile(const string& fileName, Graph& graph)
 }
 
 // FUNCIÓN DE LECTURA DEL ARCHIVO "guardians.conf"
-vector<Guardian*> readGuardianFile(const string& fileName)
+vector<Guardian*> readGuardiansFile(const string& fileName)
 {
     int level100 = 0, level90 = 0;
     vector<Guardian*> guardianList;
@@ -315,7 +308,7 @@ int main()
     if (readCitiesFile("cities.conf", map)) {}
     else { validGame = false; }
 
-    vector<Guardian*> guardianList = readGuardianFile("guardians.conf");
+    vector<Guardian*> guardianList = readGuardiansFile("guardians.conf");
 
     // CREACIÓN DEL ÁRBOL BINARIO (RANKING) A PARTIR DE LA LISTA DE GUARDIANES CARGADOS DESDE EL ARCHIVO
     Guardian* rankRoot = createRankTree(guardianList);
@@ -385,7 +378,7 @@ int main()
                 system("pause");
                 system("cls");
                 break;
-            case 3: // ENTRAR EN MENÚ DE "CONOCER EL REINO"
+            case 3: // MENÚ DE "CONOCER EL REINO"
                 system("cls");
 
                 do
@@ -474,7 +467,7 @@ int main()
 
                 system("cls");
                 break;
-            case 4: // MENÚ DE PRESENCIAR BATALLA
+            case 4: // MENÚ DE "PRESENCIAR BATALLA"
                 system("cls");
 
                 do
@@ -573,7 +566,8 @@ int main()
     }
     else { cout << ">> Game invalid. Check that the files are correct." << endl; }
 
-    freeRankTree(rankRoot);
+    cout << ">> Program closed." << endl;
+
     freeHierarchyTree(top);
 
     return 0;
@@ -656,7 +650,7 @@ Guardian* createHierarchyTree(const vector<Guardian*>& guardianList, const strin
             }
         }
     }
-
+    
     return top;
 }
 
